@@ -179,6 +179,47 @@ def main():
         "Courtyard_Area_m2": courtyard_area,
         "Daily_Irrigation_Demand_L": round(courtyard_area * 3.5, 1) # baseline weekly watering depth
     }
+    # Flatten multi-level results into a single-level dictionary for seamless QGIS Joining
+    qgis_flat_output = []
+    
+    for b_id, data in output_database.items():
+        if b_id == 'CY001':
+            continue
+        
+        # Default baseline capacity evaluated at 20m³ (or adjust capacity key)
+        cap_key = "20m3"
+        
+        flat_entry = {
+            "Building_I": b_id,
+            "Occupants": data["Occupants"],
+            "Roof_m2": data["Roof_Area_m2"],
+            
+            # 2014 Key Results
+            "Cov_2014_Pct": data["Results_2014"][cap_key]["Water_Coverage_Pct"],
+            "Unmet_2014_L": data["Results_2014"][cap_key]["Unmet_Water_Demand_L"],
+            "Overflow_2014_L": data["Results_2014"][cap_key]["Overflow_Volume_L"],
+            "Savings_2014_EUR": data["Results_2014"][cap_key]["Cost_Savings_Total_EUR"],
+            
+            # 2026 Key Results
+            "Cov_2026_Pct": data["Results_2026"][cap_key]["Water_Coverage_Pct"],
+            "Unmet_2026_L": data["Results_2026"][cap_key]["Unmet_Water_Demand_L"],
+            "Overflow_2026_L": data["Results_2026"][cap_key]["Overflow_Volume_L"],
+            "Savings_2026_EUR": data["Results_2026"][cap_key]["Cost_Savings_Total_EUR"],
+            
+            # Forecast Trends
+            "Supply_ThisWeek_L": data["Results_This_Week"][cap_key]["Water_Supplied_L"],
+            "Supply_NextWeek_L": data["Results_Next_Week_Forecast"][cap_key]["Water_Supplied_L"]
+        }
+        qgis_flat_output.append(flat_entry)
+
+    # Save both complete hierarchical data AND flat QGIS joined table
+    with open("couree_water_results.json", "w") as f:
+        json.dump(output_database, f, indent=4)
+        
+    with open("couree_qgis_flat.json", "w") as f:
+        json.dump(qgis_flat_output, f, indent=4)
+
+    print("✅ Full pipeline execution complete. Exported nested and flattened JSON files.")
 
     # Save to JSON file for automatic QGIS join
     with open("couree_water_results.json", "w") as f:
