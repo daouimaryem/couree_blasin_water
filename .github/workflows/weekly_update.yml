@@ -1,45 +1,15 @@
-name: Weekly Courée Blasin Water Pipeline
-
-on:
-  schedule:
-    - cron: '0 0 * * 0'
-  workflow_dispatch:
-
-jobs:
-  run-pipeline:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository code
-        uses: actions/checkout@v3
-
-      - name: Set up Python environment
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
       - name: Install required Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas openpyxl numpy earthengine-api
+          pip install pandas openpyxl numpy earthengine-api google-auth
 
-      - name: Authenticate with Google Earth Engine
+      - name: Save Google Cloud credentials
         env:
           EE_KEY: ${{ secrets.EE_SERVICE_ACCOUNT_KEY }}
         run: |
-          if [ -n "$EE_KEY" ]; then
-            echo "$EE_KEY" > gcp_key.json
-            python -c "import ee; ee.Initialize(ee.ServiceAccountCredentials(None, 'gcp_key.json'))"
+          if [ -z "$EE_KEY" ]; then
+            echo "⚠ Warning: EE_SERVICE_ACCOUNT_KEY secret is not set"
+            exit 1
           fi
-
-      - name: Execute main water balance pipeline
-        run: |
-          python main.py
-
-      - name: Commit and push updated results to GitHub repository
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add couree_water_results.json couree_qgis_flat.json
-          git commit -m "Automated update: Weekly Courée Blasin water balance results [$(date -u +'%Y-%m-%d')]" || exit 0
-          git push
+          echo "$EE_KEY" > gcp_key.json
+          echo "✓ Service account credentials saved"
