@@ -4,6 +4,9 @@ import pandas as pd
 import numpy as np
 import ee
 
+# Initialize Earth Engine with service account credentials
+ee.Initialize(ee.ServiceAccountCredentials(None, 'gcp_key.json'))
+
 EXCEL_FILE = "Couree_Blasin_Roof_Assumption_Prototype (2).xlsx"
 
 # Courée Blasin Roubaix Centroid Geometry
