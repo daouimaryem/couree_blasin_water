@@ -23,16 +23,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas openpyxl numpy earthengine-api google-auth
 
-      - name: Save Google Cloud credentials
+      - name: Save Google Cloud credentials (if available)
         env:
           EE_KEY: ${{ secrets.EE_SERVICE_ACCOUNT_KEY }}
         run: |
-          if [ -z "$EE_KEY" ]; then
-            echo "⚠ Warning: EE_SERVICE_ACCOUNT_KEY secret is not set"
-            exit 1
+          if [ -n "$EE_KEY" ]; then
+            echo "$EE_KEY" > gcp_key.json
+            echo "✓ Service account credentials saved"
+          else
+            echo "⚠ Secret not found: main.py will use local fallback generator."
           fi
-          echo "$EE_KEY" > gcp_key.json
-          echo "✓ Service account credentials saved"
 
       - name: Execute main water balance pipeline
         run: |
@@ -43,5 +43,5 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add couree_water_results.json couree_qgis_flat.json
-          git commit -m "Automated update: Weekly Courée Blasin water balance results [$(](#)*
-
+          git commit -m "Automated update: Weekly Courée Blasin water balance results [$(date -u +'%Y-%m-%d')]" || exit 0
+          git push
