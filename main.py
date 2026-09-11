@@ -221,6 +221,10 @@ def main():
         
     with open("couree_qgis_flat.json", "w") as f:
         json.dump(qgis_flat_output, f, indent=4)
+        
+    # Convert the flat list to a pandas DataFrame and save as CSV for easy QGIS import
+    df_qgis_csv = pd.DataFrame(qgis_flat_output)
+    df_qgis_csv.to_csv("couree_qgis_flat.csv", index=False)
 
     print("✅ Pipeline execution successful.")
 
