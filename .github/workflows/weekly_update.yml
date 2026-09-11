@@ -23,12 +23,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install pandas openpyxl numpy earthengine-api
 
-      - name: Create GCP Key File (if secret exists)
+      - name: Authenticate with Google Earth Engine
         env:
           EE_KEY: ${{ secrets.EE_SERVICE_ACCOUNT_KEY }}
         run: |
           if [ -n "$EE_KEY" ]; then
             echo "$EE_KEY" > gcp_key.json
+            python -c "import ee; ee.Initialize(ee.ServiceAccountCredentials(None, 'gcp_key.json'))"
           fi
 
       - name: Execute main water balance pipeline
