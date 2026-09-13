@@ -47,6 +47,6 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add couree_water_results.json couree_qgis_flat.json couree_qgis_flat.csv
+          git add couree_blasin_results.csv
           git commit -m "Automated update: Weekly Courée Blasin water balance results [$(date -u +'%Y-%m-%d')]" || exit 0
           git push
