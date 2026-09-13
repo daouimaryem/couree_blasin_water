@@ -66,7 +66,7 @@ def get_rainfall_ee(dataset_id, start_date, end_date, variable_name):
     return df
 
 def run_water_balance_simulation(roof_area, occupants, precip_series, tank_capacity_m3=10, tariff_per_m3=2.3961, is_courtyard=False, courtyard_area=0.0, monthly_irrigation_depths=None):
-    """Runs daily water balance simulation across any given timeframe."""
+    """Runs rigorous daily water balance simulation returning all core metrics."""
     runoff_c, coll_eff, first_flush, filter_eff = 0.85, 0.90, 0.05, 0.95
     net_harvest_efficiency = runoff_c * coll_eff * (1 - first_flush) * filter_eff
 
@@ -130,6 +130,9 @@ def run_water_balance_simulation(roof_area, occupants, precip_series, tank_capac
     annual_cost_savings = (supplied_total / 1000.0) * tariff_per_m3
 
     return {
+        "Potential_Harvest_L": round(potential_harvest_total, 1),
+        "Collected_Rainwater_L": round(collected_total, 1),
+        "Total_Water_Demand_L": round(total_demand_period, 1),
         "Water_Supplied_L": round(supplied_total, 1),
         "Water_Coverage_Pct": round(coverage_pct, 2),
         "Capture_Rate_Pct": round(capture_rate, 2),
@@ -141,7 +144,7 @@ def run_water_balance_simulation(roof_area, occupants, precip_series, tank_capac
     }
 
 def main():
-    print("Starting Comprehensive Courée Blasin Pipeline (2014, 2026, 2030 + Scenarios 1 & 2)...")
+    print("Starting Comprehensive Courée Blasin Pipeline (Multi-period + Scenarios 1 & 2)...")
     init_earth_engine()
     
     bldgs = pd.read_excel(EXCEL_FILE, sheet_name='01_BUILDINGS')
@@ -160,8 +163,6 @@ def main():
                 tariff_df['Redevance Voies navigables de France (€/m³)'].values[0]
 
     df_merged = pd.merge(bldgs, roofs[['Building_ID', 'Collectable_Roof_Area_m²']], on='Building_ID')
-
-    # Fetch Rainfall for 2014, 2026, and 2030 from GEE parameters in Sheet 10
     dataset_id = gee_df['Dataset_ID'].values[0] if 'Dataset_ID' in gee_df.columns else 'NASA/GDDP-CMIP6'
     
     print("Fetching rainfall time-series for 2014, 2026, and 2030...")
@@ -189,19 +190,23 @@ def main():
             "Building_I": b_id,
             "Occupants": occ,
             "Roof_m2": roof_area,
+            # 2014 Period
             "Cov_2014_Pct": sim_2014["Water_Coverage_Pct"],
+            "Savings_2014_EUR": sim_2014["Cost_Savings_EUR"],
+            # 2026 Period (Full details)
             "Cov_2026_Pct": sim_2026["Water_Coverage_Pct"],
-            "Cov_2030_Pct": sim_2030["Water_Coverage_Pct"],
             "Unmet_2026_L": sim_2026["Unmet_Water_Demand_L"],
-            "Savings_2026_EUR": sim_2026["Cost_Savings_EUR"]
+            "Savings_2026_EUR": sim_2026["Cost_Savings_EUR"],
+            "Capture_2026_Pct": sim_2026["Capture_Rate_Pct"],
+            "Reuse_2026_Pct": sim_2026["Reuse_Rate_Pct"],
+            "Overflow_2026_L": sim_2026["Overflow_Volume_L"],
+            "Empty_Days_2026": sim_2026["Empty_Days"],
+            # 2030 Period
+            "Cov_2030_Pct": sim_2030["Water_Coverage_Pct"],
+            "Savings_2030_EUR": sim_2030["Cost_Savings_EUR"]
         })
 
-    # 2. Scenario 2: Shared Tank Equity Index Calculation
-    mean_cov = np.mean(individual_coverages_2026)
-    std_cov = np.std(individual_coverages_2026)
-    equity_index = round(1.0 - (std_cov / mean_cov if mean_cov > 0 else 0), 3)
-
-    # Scenario 2 Storage Configurations (1 shared 20m3, 2 shared 10m3, 4 shared 5m3)
+    # 2. Scenario 2: Shared Tank Analysis (1 Shared 20m3, 2 Shared 10m3, 4 Shared 5m3) vs Individual
     total_roof_area = df_merged['Collectable_Roof_Area_m²'].sum()
     total_occupants = df_merged['Occupants'].sum()
     
@@ -210,17 +215,28 @@ def main():
     group1_roof = df_merged.iloc[:4]['Collectable_Roof_Area_m²'].sum()
     group1_occ = df_merged.iloc[:4]['Occupants'].sum()
     shared_2_tanks = run_water_balance_simulation(group1_roof, group1_occ, rain_2026['precip_mm'].values, tank_capacity_m3=10, tariff_per_m3=pv_tariff)
+    
+    group_small_roof = total_roof_area / 4.0
+    group_small_occ = total_occupants / 4.0
+    shared_4_tanks = run_water_balance_simulation(group_small_roof, group_small_occ, rain_2026['precip_mm'].values, tank_capacity_m3=5, tariff_per_m3=pv_tariff)
+
+    # Equity Index calculation across individual buildings
+    mean_cov = np.mean(individual_coverages_2026)
+    std_cov = np.std(individual_coverages_2026)
+    equity_index = round(1.0 - (std_cov / mean_cov if mean_cov > 0 else 0), 3)
 
     # 3. Scenario 1: Courtyard Seasonal Irrigation
     courtyard_area = yard['Courtyard_Area'].values[0]
     yard_sim_2026 = run_water_balance_simulation(0, 0, rain_2026['precip_mm'].values, tank_capacity_m3=10, tariff_per_m3=pv_tariff, is_courtyard=True, courtyard_area=courtyard_area, monthly_irrigation_depths=monthly_irrigation_depths)
 
-    # 4. Compile into QGIS-ready Flat CSV Output
+    # 4. Compile into QGIS-ready Flat CSV Output with all Scenarios & Temporal Metrics
     for b_data in building_results:
         b_data["Shared_1Tank_Coverage_Pct"] = shared_1_tank["Water_Coverage_Pct"]
         b_data["Shared_2Tanks_Coverage_Pct"] = shared_2_tanks["Water_Coverage_Pct"]
+        b_data["Shared_4Tanks_Coverage_Pct"] = shared_4_tanks["Water_Coverage_Pct"]
         b_data["Equity_Index"] = equity_index
         b_data["Courtyard_Scenario1_Coverage"] = yard_sim_2026["Water_Coverage_Pct"]
+        b_data["Courtyard_Scenario1_Savings_EUR"] = yard_sim_2026["Cost_Savings_EUR"]
         qgis_flat_output.append(b_data)
 
     # Append Courtyard summary row
@@ -229,14 +245,22 @@ def main():
         "Occupants": 0,
         "Roof_m2": courtyard_area,
         "Cov_2014_Pct": yard_sim_2026["Water_Coverage_Pct"],
+        "Savings_2014_EUR": yard_sim_2026["Cost_Savings_EUR"],
         "Cov_2026_Pct": yard_sim_2026["Water_Coverage_Pct"],
-        "Cov_2030_Pct": yard_sim_2026["Water_Coverage_Pct"],
         "Unmet_2026_L": yard_sim_2026["Unmet_Water_Demand_L"],
         "Savings_2026_EUR": yard_sim_2026["Cost_Savings_EUR"],
+        "Capture_2026_Pct": yard_sim_2026["Capture_Rate_Pct"],
+        "Reuse_2026_Pct": yard_sim_2026["Reuse_Rate_Pct"],
+        "Overflow_2026_L": yard_sim_2026["Overflow_Volume_L"],
+        "Empty_Days_2026": yard_sim_2026["Empty_Days"],
+        "Cov_2030_Pct": yard_sim_2026["Water_Coverage_Pct"],
+        "Savings_2030_EUR": yard_sim_2026["Cost_Savings_EUR"],
         "Shared_1Tank_Coverage_Pct": shared_1_tank["Water_Coverage_Pct"],
         "Shared_2Tanks_Coverage_Pct": shared_2_tanks["Water_Coverage_Pct"],
+        "Shared_4Tanks_Coverage_Pct": shared_4_tanks["Water_Coverage_Pct"],
         "Equity_Index": equity_index,
-        "Courtyard_Scenario1_Coverage": yard_sim_2026["Water_Coverage_Pct"]
+        "Courtyard_Scenario1_Coverage": yard_sim_2026["Water_Coverage_Pct"],
+        "Courtyard_Scenario1_Savings_EUR": yard_sim_2026["Cost_Savings_EUR"]
     })
 
     df_qgis_csv = pd.DataFrame(qgis_flat_output)
