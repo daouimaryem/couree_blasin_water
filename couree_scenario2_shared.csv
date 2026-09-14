@@ -1,3 +1,5 @@
 Configuration,Tank_Count,Total_Storage_m3,Total_Roof_m2,Total_Occupants,Average_Coverage_Pct,Total_Savings_EUR,Equity_Index
-Single Shared 20m3 Tank,1,20.0,428.09999999999997,16,63.99,519.36,0.702
-Individual 10m3 Tanks per Building,7,70.0,428.09999999999997,16,73.96,520.53,0.702
+Single Shared 20m3 Tank,1,20.0,428.09999999999997,16,70.37,571.1,0.95
+2 Shared Community Tanks (10m3 each),2,20.0,428.09999999999997,16,70.37,571.1,0.88
+4 Shared Community Tanks (5m3 each),4,20.0,428.09999999999997,16,70.37,571.12,0.81
+Individual 10m3 Tanks per Building,7,70.0,428.09999999999997,16,77.85,557.38,0.733
