@@ -47,6 +47,6 @@ jobs:
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add couree_blasin_results.csv
-          git commit -m "Automated update: Weekly Courée Blasin water balance results [$(date -u +'%Y-%m-%d')]" || exit 0
+          git add couree_baseline_buildings.csv couree_scenario1_courtyard.csv couree_scenario2_shared.csv
+          git commit -m "Automated update: Separate QGIS scenario CSV files [$(date -u +'%Y-%m-%d')]" || exit 0
           git push
