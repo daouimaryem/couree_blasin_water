@@ -218,7 +218,7 @@ def main():
     pd.DataFrame(baseline_records).to_csv("couree_baseline_buildings.csv", index=False)
 
     # --- DATASET 2: SCENARIO 1 (COURTYARD IRRIGATION) ---
-        cy_area = yard['Courtyard_Area'].values[0]
+    cy_area = yard['Courtyard_Area'].values[0]
     cy2014 = run_comprehensive_simulation(0, 0, rain_2014['precip_mm'].values, 10, pv_tariff, True, cy_area, monthly_irrigation_depths)
     cy2026 = run_comprehensive_simulation(0, 0, rain_2026['precip_mm'].values, 10, pv_tariff, True, cy_area, monthly_irrigation_depths)
     cy2030 = run_comprehensive_simulation(0, 0, rain_2030['precip_mm'].values, 10, pv_tariff, True, cy_area, monthly_irrigation_depths)
